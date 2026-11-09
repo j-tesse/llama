@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Build the llama.cpp server image for DeepSeek V4 Flash.
+# Build the llama.cpp server image (model-agnostic).
 # Uses upstream's own .devops/cuda.Dockerfile (no fork, no patches) driven by
 # build args. Tags: :b<N>, :<upstream-describe>, :latest.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 # --- configuration ---------------------------------------------------------
-IMAGE="deepseek-v4-flash"
+IMAGE="llama-cpp"
 SUBMODULE="llama.cpp"
 CUDA_VERSION="13.0.1"      # host driver is 610.43.02 / CUDA 13.3
 CUDA_DOCKER_ARCH="120"     # RTX 5090 Blackwell = sm_120, single arch keeps build fast

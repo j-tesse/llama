@@ -1,32 +1,25 @@
 #!/usr/bin/env bash
-# Start DeepSeek V4 Flash on port 8000 as a drop-in replacement for vLLM.
+# Start the model from model.conf on port 8000 as a drop-in replacement for vLLM.
 # The GPU holds one LLM at a time, so this stops any running vLLM first.
 set -euo pipefail
 cd "$(dirname "$0")"
+source ./model.conf
 
 # --- configuration ---------------------------------------------------------
-IMAGE="deepseek-v4-flash:latest"
-CONTAINER="llama_ds_v4_flash"
+IMAGE="llama-cpp:latest"
+CONTAINER="llama_cpp"
 MODELS_DIR="/home/joran/models/gguf"
-QUANT="UD-IQ3_XXS"
-MODEL_FILE="DeepSeek-V4-Flash-0731-UD-IQ3_XXS-00001-of-00004.gguf"
-ALIAS="DeepSeek-V4-Flash-0731"
 PORT=8000
-CONTEXT_SIZE=32768
 THREADS=12          # physical cores only; SMT siblings thrash cache
-N_CPU_MOE=34        # expert layers pushed to RAM. See the tuning table in CLAUDE.md.
-UBATCH_SIZE=6144    # prefill streams the CPU experts over PCIe once per ubatch — big ubatch amortises it
-BATCH_SIZE=6144
-LOAD_MODE=mmap      # DO NOT set to `none`/--no-mmap on this box. It is 1.7x faster at prefill
-                    # (pinned host memory → full PCIe rate) but pins ~78gb unreclaimable, leaving
-                    # ~10gb, and the OOM killer took out the agent 4min in. See CLAUDE.md.
+LOAD_MODE=mmap      # DO NOT set to `none`/--no-mmap on this box: pins the CPU weights unreclaimable
+                    # and the OOM killer took out the agent. See AGENTS.md.
 # ---------------------------------------------------------------------------
 
 C='\033[96m'; G='\033[92m'; Y='\033[93m'; R='\033[91m'; RS='\033[0m'
 say() { echo -e "${C}==>${RS} $*"; }
 
-[ -f "$MODELS_DIR/$QUANT/$MODEL_FILE" ] || {
-  echo -e "${R}model missing:${RS} $MODELS_DIR/$QUANT/$MODEL_FILE"
+[ -f "$MODELS_DIR/$NAME/$MODEL_FILE" ] || {
+  echo -e "${R}model missing:${RS} $MODELS_DIR/$NAME/$MODEL_FILE"
   echo "run: ./download-model.sh"
   exit 1
 } >&2
@@ -57,15 +50,13 @@ done
 say "VRAM free (${used} MiB used)"
 
 # 2. Create.
-say "creating container (model load takes several minutes)"
+say "creating container for $ALIAS (model load can take minutes)"
 # --restart no: vLLM's container is `unless-stopped` and also binds 8000;
 # two auto-restarting containers would race for the port after a reboot.
-# No --cache-type-k/-v: f16 KV. Quantized KV is reported to emit garbage on
-# this architecture upstream.
 docker run -d --name "$CONTAINER" \
   --runtime nvidia --gpus all \
   --restart no \
-  -v "${MODELS_DIR}:/models:ro" \
+  -v "${MODELS_DIR}/${NAME}:/model:ro" \
   -p "${PORT}:${PORT}" \
   --ipc=host \
   --health-cmd "curl -f http://localhost:${PORT}/health || exit 1" \
@@ -75,21 +66,18 @@ docker run -d --name "$CONTAINER" \
   --health-retries 60 \
   --health-start-period 30s \
   "$IMAGE" \
-  --model "/models/${QUANT}/${MODEL_FILE}" \
+  --model "/model/${MODEL_FILE}" \
   --alias "$ALIAS" \
   --n-gpu-layers 999 \
-  --n-cpu-moe "$N_CPU_MOE" \
   --threads "$THREADS" \
   --ctx-size "$CONTEXT_SIZE" \
-  --batch-size "$BATCH_SIZE" \
-  --ubatch-size "$UBATCH_SIZE" \
   --load-mode "$LOAD_MODE" \
   --cont-batching \
   --parallel 1 \
   --jinja \
   --flash-attn on \
-  --temp 1.0 --top-p 0.95 --min-p 0.0 \
-  --host 0.0.0.0 --port "$PORT" >/dev/null
+  --host 0.0.0.0 --port "$PORT" \
+  "${SERVER_ARGS[@]}" >/dev/null
 
 # 3. Wait for healthy, logging startup duration like vllm.sh/llama.sh do.
 START_TIME=$(date +%s)
@@ -115,7 +103,7 @@ done
 
 CSV=/home/joran/scripts/llama-startups.csv
 [ -f "$CSV" ] || echo "timestamp,container,duration_seconds" > "$CSV"
-echo "$(date -Is),${CONTAINER},$(( $(date +%s) - START_TIME ))" >> "$CSV"
+echo "$(date -Is),${CONTAINER}/${NAME},$(( $(date +%s) - START_TIME ))" >> "$CSV"
 
 # 4. Re-point pi + OpenClaw at whatever :8000 now serves.
 if [ -x /home/joran/scripts/update-agent-models.sh ]; then
@@ -126,4 +114,4 @@ if [ -x /home/joran/scripts/update-agent-models.sh ]; then
     || echo -e "${Y}agent sync failed (non-fatal)${RS}"
 fi
 
-say "serving on http://localhost:${PORT}/v1  — ./stop.sh returns the GPU to vLLM"
+say "serving $ALIAS on http://localhost:${PORT}/v1  — ./stop.sh returns the GPU to vLLM"
