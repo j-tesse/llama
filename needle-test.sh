@@ -3,14 +3,14 @@
 # (spanning several ubatches) and require all of them back.
 set -euo pipefail
 cd "$(dirname "$0")"
+source ./model.conf
 
 # --- configuration ---------------------------------------------------------
 ENDPOINT="http://localhost:8000"
-MODEL="DeepSeek-V4-Flash-0731"
-PROMPT_WORDS=20000   # ~20k tokens: 4 ubatches at -ub 6144
+PROMPT_WORDS=20000   # ~20k tokens: several ubatches at large -ub
 # ---------------------------------------------------------------------------
 
-python3 -I - "$PROMPT_WORDS" "$MODEL" <<'EOF' | curl -s "$ENDPOINT/v1/chat/completions" -H 'Content-Type: application/json' -d @- >/tmp/needle.json
+python3 -I - "$PROMPT_WORDS" "$ALIAS" <<'EOF' | curl -s "$ENDPOINT/v1/chat/completions" -H 'Content-Type: application/json' -d @- >/tmp/needle.json
 import json, random, sys
 n = int(sys.argv[1]); random.seed(7)
 w = ['alpha','beta','gamma','delta','epsilon','zeta','eta','theta']

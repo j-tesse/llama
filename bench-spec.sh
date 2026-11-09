@@ -4,10 +4,10 @@
 # Compare decode tok/s against the same prompt with --spec-type none.
 set -euo pipefail
 cd "$(dirname "$0")"
+source ./model.conf
 
 # --- configuration ---------------------------------------------------------
 ENDPOINT="http://localhost:8000"
-MODEL="DeepSeek-V4-Flash-0731"
 DECODE_TOKENS=400
 SOURCE_FILE="llama.cpp/common/speculative.h"   # ~200 lines of C++ to echo back
 # ---------------------------------------------------------------------------
@@ -18,7 +18,7 @@ import json,sys,uuid
 src=sys.stdin.read()
 msg=('Reproduce the following C++ header verbatim, changing only the copyright '
      'year to 2027. Output the full file, no commentary.\n\n'+src)
-print(json.dumps({'model':'$MODEL','messages':[{'role':'user','content':msg}],
+print(json.dumps({'model':'$ALIAS','messages':[{'role':'user','content':msg}],
  'max_tokens':$DECODE_TOKENS,'stream':False,'temperature':0.0}))
 " <<<"$src")
 

@@ -3,10 +3,10 @@
 # Each run prepends a UUID so the server's prompt cache can't skew prefill.
 set -euo pipefail
 cd "$(dirname "$0")"
+source ./model.conf
 
 # --- configuration ---------------------------------------------------------
 ENDPOINT="http://localhost:8000"
-MODEL="DeepSeek-V4-Flash-0731"
 PROMPT_TOKENS=(512 4096 16384)   # approximate prompt sizes to sweep
 DECODE_TOKENS=150                # tokens to generate per run
 GPU_SAMPLE=1                     # 1 = sample PCIe/SM counters during each run
@@ -29,7 +29,7 @@ run() {
 import json,sys,uuid
 p=sys.stdin.read()
 print(json.dumps({
- 'model':'$MODEL',
+ 'model':'$ALIAS',
  'messages':[{'role':'user','content':str(uuid.uuid4())+' '+p+'\nCount slowly.'}],
  'max_tokens':$DECODE_TOKENS,'stream':False,'cache_prompt':False}))
 " <<<"$prompt")

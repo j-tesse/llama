@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Stop DeepSeek V4 Flash and hand the GPU back to the vLLM daily driver.
+# Stop the llama.cpp server and hand the GPU back to the vLLM daily driver.
 #   ./stop.sh            stop + restore vLLM
 #   ./stop.sh --no-restore   just stop, leave the GPU free
 set -euo pipefail
 cd "$(dirname "$0")"
 
-CONTAINER="llama_ds_v4_flash"
+CONTAINER="llama_cpp"
 
 C='\033[96m'; Y='\033[93m'; RS='\033[0m'
 say() { echo -e "${C}==>${RS} $*"; }
