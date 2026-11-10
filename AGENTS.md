@@ -1,7 +1,7 @@
 # llama
 Test-bench for running quantized models with `llama.cpp` in docker, **one model at a time**.
 The model under test is defined in `model.conf`; per-model findings live in `models/<NAME>.md`.
-Current model: **DeepSeek V4 Flash 0731** → `models/deepseek-v4-flash.md`.
+Current model: **Ripple 65B Preview NVFP4** → `models/ripple-65b-nvfp4.md`.
 
 Serves an OpenAI-compatible API on **port 8000** as a drop-in replacement for the vLLM service.
 
@@ -26,6 +26,7 @@ llama/
 ├── build-async.sh      start|status [--json]|wait|log|stop — build takes ~10-20min
 ├── update.sh           move submodule to a newer tag (ff-only, refuses dirty tree) + rebuild
 ├── download-model.sh   throw-away container pulls the GGUF into ~/models/gguf/<NAME>
+├── download-aria2.sh   fallback when xet stalls: aria2 (16 conns, resumable), single literal file in INCLUDE
 ├── verify-model.sh     shard count + GGUF magic check
 ├── start.sh            free GPU → run container → wait healthy → re-point agents
 ├── stop.sh             stop container → restart vLLM  (`--no-restore` to skip)
@@ -51,7 +52,8 @@ success. Container: `llama_cpp` (fixed name, so `stop.sh` finds it regardless of
 ## Switching to the next model
 1. `./stop.sh --no-restore`; optionally `rm -rf ~/models/gguf/<old NAME>` (disk)
 2. new arch? `./update.sh` to a llama.cpp tag that supports it
-3. edit `model.conf` (old values stay in git history + `models/<old>.md`), create `models/<NAME>.md`
+3. edit `model.conf` (old values stay in git history + `models/<old>.md`), create `models/<NAME>.md`,
+   update "Current model" at the top of this file
 4. `./download-model.sh && ./start.sh`, then `./bench.sh`, `./needle-test.sh`, `./tune.sh`
 5. record fit / measurements / dead ends in `models/<NAME>.md`; fold the tune winner into `SERVER_ARGS`
 

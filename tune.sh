@@ -15,8 +15,13 @@ THREADS=12
 RESULTS="tune.results"
 
 # name|extra llama-server args, appended after model.conf's SERVER_ARGS (last flag wins)
+D="--spec-type draft-dflash -ngld 99 -md /model/Ripple-65B-Preview-DFlash2"
 VARIANTS=(
-  "current         |"
+  "ngl38_ub2048    |"
+  "ngl41_ub1024    |-ngl 41 -b 1024 -ub 1024"
+  "dfq4_ngl34_n3   |-ngl 34 $D-Q4_K_M.gguf"
+  "dfq4_ngl34_n8   |-ngl 34 $D-Q4_K_M.gguf --spec-draft-n-max 8"
+  "dfq8_ngl31_n8   |-ngl 31 $D-Q8_0.gguf --spec-draft-n-max 8"
 )
 # ---------------------------------------------------------------------------
 
